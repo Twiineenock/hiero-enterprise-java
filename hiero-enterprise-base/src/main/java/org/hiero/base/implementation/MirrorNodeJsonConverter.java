@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.hiero.base.data.AccountInfo;
 import org.hiero.base.data.Balance;
 import org.hiero.base.data.Contract;
+import org.hiero.base.data.ContractLog;
 import org.hiero.base.data.ExchangeRates;
 import org.hiero.base.data.NetworkFee;
 import org.hiero.base.data.NetworkStake;
@@ -54,4 +55,6 @@ public interface MirrorNodeJsonConverter<JSON> {
   @NonNull Page<Contract> toContractPage(@NonNull JSON json);
 
   @NonNull List<Contract> toContracts(@NonNull JSON json);
+
+  @NonNull Page<ContractLog> toContractLogPage(@NonNull JSON json);
 }

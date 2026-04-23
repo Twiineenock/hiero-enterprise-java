@@ -12,6 +12,7 @@ import org.hiero.base.data.AccountInfo;
 import org.hiero.base.data.Balance;
 import org.hiero.base.data.BalanceModification;
 import org.hiero.base.data.Contract;
+import org.hiero.base.data.ContractLog;
 import org.hiero.base.data.ExchangeRates;
 import org.hiero.base.data.NetworkFee;
 import org.hiero.base.data.NetworkStake;
@@ -470,5 +471,28 @@ public interface MirrorNodeClient {
   default Optional<Contract> queryContractById(@NonNull String contractId) throws HieroException {
     Objects.requireNonNull(contractId, "contractId must not be null");
     return queryContractById(ContractId.fromString(contractId));
+  }
+
+  /**
+   * Queries all logs for a specific contract.
+   *
+   * @param contractId the contract ID
+   * @return a page of contract logs
+   * @throws HieroException if an error occurs
+   */
+  @NonNull Page<ContractLog> queryContractLogs(@NonNull ContractId contractId)
+      throws HieroException;
+
+  /**
+   * Queries all logs for a specific contract.
+   *
+   * @param contractId the contract ID
+   * @return a page of contract logs
+   * @throws HieroException if an error occurs
+   */
+  @NonNull
+  default Page<ContractLog> queryContractLogs(@NonNull String contractId) throws HieroException {
+    Objects.requireNonNull(contractId, "contractId must not be null");
+    return queryContractLogs(ContractId.fromString(contractId));
   }
 }

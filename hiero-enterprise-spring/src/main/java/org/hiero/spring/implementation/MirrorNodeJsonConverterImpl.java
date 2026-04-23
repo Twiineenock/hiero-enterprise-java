@@ -26,6 +26,7 @@ import org.hiero.base.data.AccountInfo;
 import org.hiero.base.data.Balance;
 import org.hiero.base.data.ChunkInfo;
 import org.hiero.base.data.Contract;
+import org.hiero.base.data.ContractLog;
 import org.hiero.base.data.CustomFee;
 import org.hiero.base.data.ExchangeRate;
 import org.hiero.base.data.ExchangeRates;
@@ -850,6 +851,82 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
         .filter(optional -> optional.isPresent())
         .map(optional -> optional.get())
         .toList();
+  }
+
+  @Override
+  public @NonNull Page<ContractLog> toContractLogPage(@NonNull JsonNode node) {
+    Objects.requireNonNull(node, "jsonNode must not be null");
+    if (node.isNull() || node.isEmpty() || !node.has("logs")) {
+      return new SinglePage<>(List.of());
+    }
+
+    try {
+      final JsonNode logsNode = node.get("logs");
+      if (!logsNode.isArray()) {
+        throw new IllegalArgumentException("Logs node is not an array: " + logsNode);
+      }
+      Spliterator<JsonNode> spliterator =
+          Spliterators.spliteratorUnknownSize(logsNode.iterator(), Spliterator.ORDERED);
+      List<ContractLog> logs =
+          StreamSupport.stream(spliterator, false)
+              .map(this::toContractLog)
+              .filter(Optional::isPresent)
+              .map(Optional::get)
+              .toList();
+      return new SinglePage<>(logs);
+    } catch (final Exception e) {
+      throw new JsonParseException(node, e);
+    }
+  }
+
+  private Optional<ContractLog> toContractLog(JsonNode node) {
+    if (node == null || node.isNull()) {
+      return Optional.empty();
+    }
+    try {
+      final ContractId contractId = ContractId.fromString(node.get("contract_id").asText());
+      final ContractId rootContractId =
+          node.hasNonNull("root_contract_id")
+              ? ContractId.fromString(node.get("root_contract_id").asText())
+              : null;
+
+      String timestampStr = node.get("timestamp").asText();
+      String[] parts = timestampStr.split("\\.");
+      final Instant consensusTimestamp =
+          Instant.ofEpochSecond(
+              Long.parseLong(parts[0]), parts.length > 1 ? Long.parseLong(parts[1]) : 0);
+
+      final String data = node.get("data").asText();
+      final int index = node.get("index").asInt();
+
+      final List<String> topics =
+          StreamSupport.stream(
+                  Spliterators.spliteratorUnknownSize(
+                      node.get("topics").iterator(), Spliterator.ORDERED),
+                  false)
+              .map(JsonNode::asText)
+              .toList();
+
+      final String blockHash = node.get("block_hash").asText();
+      final long blockNumber = node.get("block_number").asLong();
+      final String transactionHash = node.get("transaction_hash").asText();
+      final int transactionIndex = node.get("transaction_index").asInt();
+
+      return Optional.of(
+          new ContractLog(
+              contractId,
+              rootContractId,
+              consensusTimestamp,
+              data,
+              index,
+              topics,
+              blockHash,
+              blockNumber,
+              transactionHash,
+              transactionIndex));
+    } catch (Exception e) {
+      throw new JsonParseException(node, e);
+    }
   }
 
   private @NonNull Key parseProtoBufEncodedKey(@NonNull String key) throws Exception {

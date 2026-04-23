@@ -10,6 +10,7 @@ import java.util.Optional;
 import org.hiero.base.HieroException;
 import org.hiero.base.data.AccountInfo;
 import org.hiero.base.data.Contract;
+import org.hiero.base.data.ContractLog;
 import org.hiero.base.data.ExchangeRates;
 import org.hiero.base.data.NetworkFee;
 import org.hiero.base.data.NetworkStake;
@@ -117,5 +118,13 @@ public abstract class AbstractMirrorNodeClient<JSON> implements MirrorNodeClient
     Objects.requireNonNull(contractId, "contractId must not be null");
     final JSON json = getRestClient().queryContractById(contractId);
     return getJsonConverter().toContract(json);
+  }
+
+  @Override
+  public @NonNull Page<ContractLog> queryContractLogs(@NonNull final ContractId contractId)
+      throws HieroException {
+    Objects.requireNonNull(contractId, "contractId must not be null");
+    final JSON json = getRestClient().queryContractLogs(contractId);
+    return getJsonConverter().toContractLogPage(json);
   }
 }

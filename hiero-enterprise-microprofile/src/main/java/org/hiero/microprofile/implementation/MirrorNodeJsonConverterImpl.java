@@ -25,6 +25,7 @@ import org.hiero.base.data.AccountInfo;
 import org.hiero.base.data.Balance;
 import org.hiero.base.data.ChunkInfo;
 import org.hiero.base.data.Contract;
+import org.hiero.base.data.ContractLog;
 import org.hiero.base.data.CustomFee;
 import org.hiero.base.data.ExchangeRate;
 import org.hiero.base.data.ExchangeRates;
@@ -876,5 +877,81 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
         .filter(optional -> optional.isPresent())
         .map(optional -> optional.get())
         .toList();
+  }
+
+  @Override
+  public @NonNull Page<ContractLog> toContractLogPage(@NonNull JsonObject jsonObject) {
+    Objects.requireNonNull(jsonObject, "jsonObject must not be null");
+    if (jsonObject.isEmpty() || !jsonObject.containsKey("logs")) {
+      return new SinglePage<>(List.of());
+    }
+
+    try {
+      final JsonArray logsArray = jsonObject.getJsonArray("logs");
+      if (logsArray == null) {
+        throw new IllegalArgumentException("No logs array in JSON");
+      }
+      final Spliterator<JsonValue> spliterator =
+          Spliterators.spliteratorUnknownSize(logsArray.iterator(), Spliterator.ORDERED);
+      List<ContractLog> logs =
+          StreamSupport.stream(spliterator, false)
+              .map(n -> toContractLog(n.asJsonObject()))
+              .filter(Optional::isPresent)
+              .map(Optional::get)
+              .toList();
+      return new SinglePage<>(logs);
+    } catch (final Exception e) {
+      throw new IllegalStateException("Can not parse JSON: " + jsonObject, e);
+    }
+  }
+
+  private Optional<ContractLog> toContractLog(JsonObject jsonObject) {
+    if (jsonObject == null || jsonObject.isEmpty()) {
+      return Optional.empty();
+    }
+    try {
+      final ContractId contractId = ContractId.fromString(jsonObject.getString("contract_id"));
+      final ContractId rootContractId =
+          jsonObject.containsKey("root_contract_id") && !jsonObject.isNull("root_contract_id")
+              ? ContractId.fromString(jsonObject.getString("root_contract_id"))
+              : null;
+
+      String timestampStr = jsonObject.getString("timestamp");
+      String[] parts = timestampStr.split("\\.");
+      final Instant consensusTimestamp =
+          Instant.ofEpochSecond(
+              Long.parseLong(parts[0]), parts.length > 1 ? Long.parseLong(parts[1]) : 0);
+
+      final String data = jsonObject.getString("data");
+      final int index = jsonObject.getInt("index");
+
+      final List<String> topics =
+          StreamSupport.stream(
+                  Spliterators.spliteratorUnknownSize(
+                      jsonObject.getJsonArray("topics").iterator(), Spliterator.ORDERED),
+                  false)
+              .map(n -> ((jakarta.json.JsonString) n).getString())
+              .toList();
+
+      final String blockHash = jsonObject.getString("block_hash");
+      final long blockNumber = jsonObject.getJsonNumber("block_number").longValue();
+      final String transactionHash = jsonObject.getString("transaction_hash");
+      final int transactionIndex = jsonObject.getInt("transaction_index");
+
+      return Optional.of(
+          new ContractLog(
+              contractId,
+              rootContractId,
+              consensusTimestamp,
+              data,
+              index,
+              topics,
+              blockHash,
+              blockNumber,
+              transactionHash,
+              transactionIndex));
+    } catch (Exception e) {
+      throw new IllegalStateException("Can not parse JSON: " + jsonObject, e);
+    }
   }
 }

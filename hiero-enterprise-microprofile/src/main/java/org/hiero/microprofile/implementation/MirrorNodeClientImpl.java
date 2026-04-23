@@ -1,6 +1,7 @@
 package org.hiero.microprofile.implementation;
 
 import com.hedera.hashgraph.sdk.AccountId;
+import com.hedera.hashgraph.sdk.ContractId;
 import com.hedera.hashgraph.sdk.TokenId;
 import com.hedera.hashgraph.sdk.TopicId;
 import jakarta.json.JsonObject;
@@ -10,6 +11,7 @@ import java.util.function.Function;
 import org.hiero.base.HieroException;
 import org.hiero.base.data.Balance;
 import org.hiero.base.data.BalanceModification;
+import org.hiero.base.data.ContractLog;
 import org.hiero.base.data.Nft;
 import org.hiero.base.data.NftMetadata;
 import org.hiero.base.data.Page;
@@ -150,5 +152,15 @@ public class MirrorNodeClientImpl extends AbstractMirrorNodeClient<JsonObject> {
   @Override
   public @NonNull Page<NftMetadata> findAllNftTypes() {
     throw new RuntimeException("Not implemented");
+  }
+
+  @Override
+  public @NonNull Page<ContractLog> queryContractLogs(@NonNull ContractId contractId)
+      throws HieroException {
+    Objects.requireNonNull(contractId, "contractId must not be null");
+    final String path = "/api/v1/contracts/" + contractId + "/results/logs";
+    final Function<JsonObject, List<ContractLog>> dataExtractionFunction =
+        n -> jsonConverter.toContractLogPage(n).getData();
+    return new RestBasedPage<>(restClient.getTarget(), dataExtractionFunction, path);
   }
 }
